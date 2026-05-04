@@ -25,7 +25,7 @@
                 
                 <!-- Filter Section -->
                 <section class="filter-section card">
-                    <form id="filter-form" action="/" method="GET" class="filter-form">
+                    <form id="filter-form" action="" method="GET" class="filter-form">
                         <div class="filter-group">
                             <label for="month">조회 월</label>
                             <select name="month" id="month" onchange="document.getElementById('filter-form').submit();">
@@ -280,6 +280,14 @@
         if(Object.keys(arpuTierFig).length > 0) Plotly.newPlot('chart-arpu-tier', arpuTierFig.data, arpuTierFig.layout, {responsive: true, displayModeBar: false});
         if(Object.keys(arpuOrgFig).length > 0) Plotly.newPlot('chart-arpu-org', arpuOrgFig.data, arpuOrgFig.layout, {responsive: true, displayModeBar: false});
         if(Object.keys(repEffFig).length > 0) Plotly.newPlot('chart-rep-eff', repEffFig.data, repEffFig.layout, {responsive: true, displayModeBar: false});
+
+        // Add GitHub Pages filter alert
+        document.getElementById('filter-form').addEventListener('submit', function(e) {
+            if (window.location.hostname.includes('github.io')) {
+                e.preventDefault();
+                alert('※ GitHub Pages는 고정된 전체 데이터를 보여주는 정적 페이지입니다.\\n필터링 및 조회월 변경 기능은 로컬 환경(Flask 서버)에서 작동합니다.');
+            }
+        });
     </script>
 </body>
 </html>
