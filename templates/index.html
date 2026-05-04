@@ -204,20 +204,20 @@
         var repEffFig = {{ rep_efficiency_json | safe }};
 
         // Render Plotly charts — order matches section flow
-        if(Object.keys(kaGaRatioFig).length > 0) Plotly.newPlot('chart-ka-ga', kaGaRatioFig.data, kaGaRatioFig.layout, {responsive: true});
-        if(Object.keys(tierDistFig).length > 0) Plotly.newPlot('chart-tier-dist', tierDistFig.data, tierDistFig.layout, {responsive: true});
-        if(Object.keys(tierCustFig).length > 0) Plotly.newPlot('chart-tier-cust', tierCustFig.data, tierCustFig.layout, {responsive: true});
-        if(Object.keys(divKagaRatioFig).length > 0) Plotly.newPlot('chart-div-kaga', divKagaRatioFig.data, divKagaRatioFig.layout, {responsive: true});
-        if(Object.keys(divTierCrossFig).length > 0) Plotly.newPlot('chart-div-tier', divTierCrossFig.data, divTierCrossFig.layout, {responsive: true});
-        if(Object.keys(tierOrgCrossFig).length > 0) Plotly.newPlot('chart-tier-org', tierOrgCrossFig.data, tierOrgCrossFig.layout, {responsive: true});
-        if(Object.keys(productMixFig).length > 0) Plotly.newPlot('chart-product-mix', productMixFig.data, productMixFig.layout, {responsive: true});
-        if(Object.keys(tierProductMixFig).length > 0) Plotly.newPlot('chart-tier-product-mix', tierProductMixFig.data, tierProductMixFig.layout, {responsive: true});
-        if(Object.keys(tierRadarFig).length > 0) Plotly.newPlot('chart-tier-radar', tierRadarFig.data, tierRadarFig.layout, {responsive: true});
-        if(Object.keys(prodCountTierFig).length > 0) Plotly.newPlot('chart-prod-count-tier', prodCountTierFig.data, prodCountTierFig.layout, {responsive: true});
-        if(Object.keys(prodCountOrgFig).length > 0) Plotly.newPlot('chart-prod-count-org', prodCountOrgFig.data, prodCountOrgFig.layout, {responsive: true});
-        if(Object.keys(arpuTierFig).length > 0) Plotly.newPlot('chart-arpu-tier', arpuTierFig.data, arpuTierFig.layout, {responsive: true});
-        if(Object.keys(arpuOrgFig).length > 0) Plotly.newPlot('chart-arpu-org', arpuOrgFig.data, arpuOrgFig.layout, {responsive: true});
-        if(Object.keys(repEffFig).length > 0) Plotly.newPlot('chart-rep-eff', repEffFig.data, repEffFig.layout, {responsive: true});
+        if(Object.keys(kaGaRatioFig).length > 0) Plotly.newPlot('chart-ka-ga', kaGaRatioFig.data, kaGaRatioFig.layout, {responsive: true, displayModeBar: false});
+        if(Object.keys(tierDistFig).length > 0) Plotly.newPlot('chart-tier-dist', tierDistFig.data, tierDistFig.layout, {responsive: true, displayModeBar: false});
+        if(Object.keys(tierCustFig).length > 0) Plotly.newPlot('chart-tier-cust', tierCustFig.data, tierCustFig.layout, {responsive: true, displayModeBar: false});
+        if(Object.keys(divKagaRatioFig).length > 0) Plotly.newPlot('chart-div-kaga', divKagaRatioFig.data, divKagaRatioFig.layout, {responsive: true, displayModeBar: false});
+        if(Object.keys(divTierCrossFig).length > 0) Plotly.newPlot('chart-div-tier', divTierCrossFig.data, divTierCrossFig.layout, {responsive: true, displayModeBar: false});
+        if(Object.keys(tierOrgCrossFig).length > 0) Plotly.newPlot('chart-tier-org', tierOrgCrossFig.data, tierOrgCrossFig.layout, {responsive: true, displayModeBar: false});
+        if(Object.keys(productMixFig).length > 0) Plotly.newPlot('chart-product-mix', productMixFig.data, productMixFig.layout, {responsive: true, displayModeBar: false});
+        if(Object.keys(tierProductMixFig).length > 0) Plotly.newPlot('chart-tier-product-mix', tierProductMixFig.data, tierProductMixFig.layout, {responsive: true, displayModeBar: false});
+        if(Object.keys(tierRadarFig).length > 0) Plotly.newPlot('chart-tier-radar', tierRadarFig.data, tierRadarFig.layout, {responsive: true, displayModeBar: false});
+        if(Object.keys(prodCountTierFig).length > 0) Plotly.newPlot('chart-prod-count-tier', prodCountTierFig.data, prodCountTierFig.layout, {responsive: true, displayModeBar: false});
+        if(Object.keys(prodCountOrgFig).length > 0) Plotly.newPlot('chart-prod-count-org', prodCountOrgFig.data, prodCountOrgFig.layout, {responsive: true, displayModeBar: false});
+        if(Object.keys(arpuTierFig).length > 0) Plotly.newPlot('chart-arpu-tier', arpuTierFig.data, arpuTierFig.layout, {responsive: true, displayModeBar: false});
+        if(Object.keys(arpuOrgFig).length > 0) Plotly.newPlot('chart-arpu-org', arpuOrgFig.data, arpuOrgFig.layout, {responsive: true, displayModeBar: false});
+        if(Object.keys(repEffFig).length > 0) Plotly.newPlot('chart-rep-eff', repEffFig.data, repEffFig.layout, {responsive: true, displayModeBar: false});
     </script>
 </body>
 </html>
