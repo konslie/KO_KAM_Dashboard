@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KAM 대시보드</title>
+    <!-- Pretendard Font 반영 -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/plotly.min.js') }}"></script>
+</head>
+<body>
+    <div class="app-layout">
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="main-content">
+            
+            <!-- TOP HEADER -->
+            <header class="top-header">
+                <h2>KAM 대시보드</h2>
+            </header>
+
+            <!-- SCROLLABLE DASHBOARD -->
+            <div class="dashboard-container">
+                
+                <!-- Filter Section -->
+                <section class="filter-section card">
+                    <form id="filter-form" action="/" method="GET" class="filter-form">
+                        <div class="filter-group">
+                            <label for="month">조회 월</label>
+                            <select name="month" id="month" onchange="document.getElementById('filter-form').submit();">
+                                {% for m in months %}
+                                <option value="{{ m }}" {% if m|string == selected_month|string %}selected{% endif %}>{{ m }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="account_type">유형 필터</label>
+                            <select name="account_type" id="account_type" onchange="document.getElementById('filter-form').submit();">
+                                <option value="All" {% if selected_account == 'All' %}selected{% endif %}>전체 유형</option>
+                                {% for a in account_types %}
+                                <option value="{{ a }}" {% if a == selected_account %}selected{% endif %}>{{ a }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="tier">Tier 필터</label>
+                            <select name="tier" id="tier" onchange="document.getElementById('filter-form').submit();">
+                                <option value="All" {% if selected_tier == 'All' %}selected{% endif %}>전체 계위</option>
+                                {% for t in tiers %}
+                                <option value="{{ t }}" {% if t == selected_tier %}selected{% endif %}>{{ t }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="division">담당 필터</label>
+                            <select name="division" id="division" onchange="document.getElementById('filter-form').submit();">
+                                <option value="All" {% if selected_div == 'All' %}selected{% endif %}>전체 담당</option>
+                                {% for d in divisions %}
+                                <option value="{{ d }}" {% if d == selected_div %}selected{% endif %}>{{ d }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="team">팀 필터</label>
+                            <select name="team" id="team" onchange="document.getElementById('filter-form').submit();">
+                                <option value="All" {% if selected_team == 'All' %}selected{% endif %}>전체 팀</option>
+                                {% for tm in teams %}
+                                <option value="{{ tm }}" {% if tm == selected_team %}selected{% endif %}>{{ tm }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- KPI Cards -->
+                <section class="kpi-grid">
+                    <div class="kpi-card card">
+                        <div class="kpi-title-row">
+                            <h3>Total Sales (선택 영역)</h3>
+                            <div class="kpi-icon text-accent">$</div>
+                        </div>
+                        <h2 class="hero-number">{{ kpi.total_sales }}</h2>
+                        <span class="trend-indicator text-accent">전체 매출 현황</span>
+                    </div>
+                    <div class="kpi-card card">
+                        <div class="kpi-title-row">
+                            <h3>Key Account (KA) Sales</h3>
+                            <div class="kpi-icon text-secondary">K</div>
+                        </div>
+                        <h2 class="hero-number text-accent">{{ kpi.ka_sales }}</h2>
+                        <span class="trend-indicator text-secondary">핵심 고객 매출</span>
+                    </div>
+                    <div class="kpi-card card">
+                        <div class="kpi-title-row">
+                            <h3>General Account (GA) Sales</h3>
+                            <div class="kpi-icon">G</div>
+                        </div>
+                        <h2 class="hero-number text-secondary">{{ kpi.ga_sales }}</h2>
+                        <span class="trend-indicator">일반 고객 매출</span>
+                    </div>
+                </section>
+
+                <!-- Charts Grid -->
+                <section class="charts-grid">
+
+                    <!-- ===== 1. 전체 개요 ===== -->
+                    <!-- KA/GA 매출 구성비 -->
+                    <div class="chart-container card">
+                        <h3 class="chart-title">KA / GA 매출 구성비</h3>
+                        <div id="chart-ka-ga" class="plot-area"></div>
+                    </div>
+
+                    <!-- Tier별 매출 현황 -->
+                    <div class="chart-container card">
+                        <h3 class="chart-title">Tier별 매출 현황</h3>
+                        <div id="chart-tier-dist" class="plot-area"></div>
+                    </div>
+
+                    <!-- Tier별 고객 수 -->
+                    <div class="chart-container card">
+                        <h3 class="chart-title">Tier별 고객 수</h3>
+                        <div id="chart-tier-cust" class="plot-area"></div>
+                    </div>
+
+                    <!-- ===== 2. 조직별 KA/GA 분석 ===== -->
+                    <div class="chart-container card col-span-3">
+                        <h3 class="chart-title">{{ org_label }}별 KA / GA 매출 비교</h3>
+                        <div id="chart-div-kaga" class="plot-area"></div>
+                    </div>
+
+                    <!-- ===== 3. 크로스 분석 (담당×Tier / Tier×담당) ===== -->
+                    <div class="chart-container card col-span-3">
+                        <h3 class="chart-title">{{ org_label }}별 Tier 매출 크로스 분석</h3>
+                        <div id="chart-div-tier" class="plot-area"></div>
+                    </div>
+
+                    <div class="chart-container card col-span-3">
+                        <h3 class="chart-title">Tier별 {{ org_label }} 매출 크로스 분석</h3>
+                        <div id="chart-tier-org" class="plot-area"></div>
+                    </div>
+
+                    <!-- ===== 4. 상품 분석 ===== -->
+                    <div class="chart-container card col-span-3">
+                        <h3 class="chart-title">{{ org_label }}별 상품 매출 히트맵</h3>
+                        <div id="chart-product-mix" class="plot-area"></div>
+                    </div>
+
+                    <div class="chart-container card col-span-3">
+                        <h3 class="chart-title">Tier별 상품 비중 히트맵</h3>
+                        <div id="chart-tier-product-mix" class="plot-area"></div>
+                    </div>
+
+                    <div class="chart-container card col-span-3">
+                        <h3 class="chart-title">Tier별 상품 포지셔닝 레이더</h3>
+                        <div id="chart-tier-radar" class="plot-area" style="height:500px;"></div>
+                    </div>
+
+                    <!-- ===== 5. 고객 분석 ===== -->
+                    <div class="chart-container card">
+                        <h3 class="chart-title">Tier별 고객당 이용 상품수</h3>
+                        <div id="chart-prod-count-tier" class="plot-area"></div>
+                    </div>
+                    <div class="chart-container card col-span-2">
+                        <h3 class="chart-title">{{ org_label }}별 고객당 이용 상품수</h3>
+                        <div id="chart-prod-count-org" class="plot-area"></div>
+                    </div>
+
+                    <div class="chart-container card">
+                        <h3 class="chart-title">Tier별 고객당 평균 매출(ARPU)</h3>
+                        <div id="chart-arpu-tier" class="plot-area"></div>
+                    </div>
+                    <div class="chart-container card col-span-2">
+                        <h3 class="chart-title">{{ org_label }}별 고객당 평균 매출(ARPU)</h3>
+                        <div id="chart-arpu-org" class="plot-area"></div>
+                    </div>
+
+                    <!-- ===== 6. 영업 생산성 ===== -->
+                    <div class="chart-container card col-span-3">
+                        <h3 class="chart-title">영업 담당자별 고객 수 vs 매출 분포</h3>
+                        <div id="chart-rep-eff" class="plot-area"></div>
+                    </div>
+
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Parse JSON strings passed from Flask
+        var kaGaRatioFig = {{ ka_ga_ratio_json | safe }};
+        var tierDistFig = {{ tier_dist_json | safe }};
+        var tierCustFig = {{ tier_cust_json | safe }};
+        var divKagaRatioFig = {{ div_kaga_ratio_json | safe }};
+        var divTierCrossFig = {{ div_tier_cross_json | safe }};
+        var tierOrgCrossFig = {{ tier_org_cross_json | safe }};
+        var productMixFig = {{ product_mix_json | safe }};
+        var tierProductMixFig = {{ tier_product_mix_json | safe }};
+        var tierRadarFig = {{ tier_radar_json | safe }};
+        var prodCountTierFig = {{ prod_count_tier_json | safe }};
+        var prodCountOrgFig = {{ prod_count_org_json | safe }};
+        var arpuTierFig = {{ arpu_tier_json | safe }};
+        var arpuOrgFig = {{ arpu_org_json | safe }};
+        var repEffFig = {{ rep_efficiency_json | safe }};
+
+        // Render Plotly charts — order matches section flow
+        if(Object.keys(kaGaRatioFig).length > 0) Plotly.newPlot('chart-ka-ga', kaGaRatioFig.data, kaGaRatioFig.layout, {responsive: true});
+        if(Object.keys(tierDistFig).length > 0) Plotly.newPlot('chart-tier-dist', tierDistFig.data, tierDistFig.layout, {responsive: true});
+        if(Object.keys(tierCustFig).length > 0) Plotly.newPlot('chart-tier-cust', tierCustFig.data, tierCustFig.layout, {responsive: true});
+        if(Object.keys(divKagaRatioFig).length > 0) Plotly.newPlot('chart-div-kaga', divKagaRatioFig.data, divKagaRatioFig.layout, {responsive: true});
+        if(Object.keys(divTierCrossFig).length > 0) Plotly.newPlot('chart-div-tier', divTierCrossFig.data, divTierCrossFig.layout, {responsive: true});
+        if(Object.keys(tierOrgCrossFig).length > 0) Plotly.newPlot('chart-tier-org', tierOrgCrossFig.data, tierOrgCrossFig.layout, {responsive: true});
+        if(Object.keys(productMixFig).length > 0) Plotly.newPlot('chart-product-mix', productMixFig.data, productMixFig.layout, {responsive: true});
+        if(Object.keys(tierProductMixFig).length > 0) Plotly.newPlot('chart-tier-product-mix', tierProductMixFig.data, tierProductMixFig.layout, {responsive: true});
+        if(Object.keys(tierRadarFig).length > 0) Plotly.newPlot('chart-tier-radar', tierRadarFig.data, tierRadarFig.layout, {responsive: true});
+        if(Object.keys(prodCountTierFig).length > 0) Plotly.newPlot('chart-prod-count-tier', prodCountTierFig.data, prodCountTierFig.layout, {responsive: true});
+        if(Object.keys(prodCountOrgFig).length > 0) Plotly.newPlot('chart-prod-count-org', prodCountOrgFig.data, prodCountOrgFig.layout, {responsive: true});
+        if(Object.keys(arpuTierFig).length > 0) Plotly.newPlot('chart-arpu-tier', arpuTierFig.data, arpuTierFig.layout, {responsive: true});
+        if(Object.keys(arpuOrgFig).length > 0) Plotly.newPlot('chart-arpu-org', arpuOrgFig.data, arpuOrgFig.layout, {responsive: true});
+        if(Object.keys(repEffFig).length > 0) Plotly.newPlot('chart-rep-eff', repEffFig.data, repEffFig.layout, {responsive: true});
+    </script>
+</body>
+</html>

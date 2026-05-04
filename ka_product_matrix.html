@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KA 상품 침투 매트릭스</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Noto+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d0e11;
+  --surface: #13151a;
+  --surface2: #1a1d24;
+  --surface3: #21252e;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.13);
+  --ink: #e8eaf0;
+  --ink2: #8b909e;
+  --ink3: #4a4f5c;
+  --green: #34c77b;
+  --green-dim: rgba(52,199,123,0.15);
+  --red: #ff5c5c;
+  --red-dim: rgba(255,92,92,0.13);
+  --amber: #f5a623;
+  --amber-dim: rgba(245,166,35,0.13);
+  --blue: #4d9fff;
+  --blue-dim: rgba(77,159,255,0.12);
+  --mono: 'Geist Mono', monospace;
+  --sans: 'Noto Sans KR', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 13px; -webkit-font-smoothing: antialiased; }
+body { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* ── TOP BAR ── */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border2);
+  background: var(--surface);
+  position: sticky; top: 0; z-index: 100;
+  gap: 16px; flex-wrap: wrap;
+}
+.topbar-title { font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--ink); letter-spacing: -0.01em; white-space: nowrap; }
+.topbar-title span { color: var(--ink2); font-weight: 400; }
+.filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.filter-label { font-size: 11px; color: var(--ink3); font-family: var(--mono); }
+select, .sort-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  outline: none;
+}
+select:focus { border-color: var(--blue); }
+.sort-btn { display: flex; align-items: center; gap: 5px; }
+.sort-btn.active { border-color: var(--amber); color: var(--amber); }
+.legend-row { display: flex; gap: 12px; align-items: center; }
+.leg { display: flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 10px; color: var(--ink2); }
+.leg-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+/* ── LAYOUT ── */
+.workspace { display: flex; flex: 1; overflow: hidden; }
+
+/* ── MATRIX AREA ── */
+.matrix-wrap {
+  flex: 1;
+  overflow: auto;
+  padding: 0;
+}
+.matrix-container { min-width: max-content; }
+
+/* ── MATRIX TABLE ── */
+.m-table { border-collapse: collapse; width: 100%; }
+
+/* Header row */
+.m-head-row { position: sticky; top: 0; z-index: 50; background: var(--surface); }
+.m-corner {
+  width: 260px; min-width: 260px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border2);
+  border-right: 1px solid var(--border2);
+  background: var(--surface);
+  position: sticky; left: 0; z-index: 60;
+}
+.m-corner-inner { display: flex; gap: 6px; align-items: center; }
+.col-search {
+  flex: 1;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  outline: none;
+}
+.col-search:focus { border-color: var(--blue); }
+
+.m-prod-th {
+  padding: 0;
+  border-bottom: 1px solid var(--border2);
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  min-width: 64px; width: 64px;
+  cursor: pointer;
+}
+.m-prod-th:hover .th-inner { background: var(--surface3); }
+.th-inner {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 8px 4px 8px;
+  gap: 4px;
+}
+.th-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink2);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  white-space: nowrap;
+  max-height: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.th-pen {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--ink3);
+  background: var(--surface3);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+.th-sorted { color: var(--amber) !important; }
+
+/* Data rows */
+.m-row { border-bottom: 1px solid var(--border); transition: background 0.1s; cursor: pointer; }
+.m-row:hover { background: var(--surface2); }
+.m-row.selected { background: rgba(77,159,255,0.07); }
+.m-row.selected .m-cust-cell { border-right-color: var(--blue); }
+
+.m-cust-cell {
+  padding: 0 12px;
+  border-right: 1px solid var(--border2);
+  background: inherit;
+  position: sticky; left: 0; z-index: 10;
+  min-width: 260px; width: 260px;
+}
+.m-cust-inner {
+  display: flex; align-items: center;
+  gap: 8px; padding: 6px 0;
+}
+.cust-name { font-weight: 500; color: var(--ink); font-size: 12px; white-space: nowrap; }
+.cust-meta { font-family: var(--mono); font-size: 10px; color: var(--ink3); white-space: nowrap; }
+.tier-badge {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 500;
+  padding: 1px 5px;
+  border-radius: 3px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.t1 { background: rgba(52,199,123,0.15); color: #34c77b; }
+.t2 { background: rgba(77,159,255,0.15); color: #4d9fff; }
+.t3 { background: rgba(245,166,35,0.15); color: #f5a623; }
+.cust-rev { font-family: var(--mono); font-size: 9px; color: var(--ink3); }
+.prod-count {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink2);
+  background: var(--surface3);
+  padding: 1px 5px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.m-cell {
+  text-align: center;
+  border-right: 1px solid var(--border);
+  min-width: 64px; width: 64px;
+  padding: 4px 0;
+}
+.cell-dot {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto;
+  font-size: 14px;
+  transition: transform 0.1s;
+}
+.cell-dot:hover { transform: scale(1.15); }
+.has { background: var(--green-dim); }
+.no { background: transparent; }
+.no-hot { background: var(--red-dim); }   /* 미보유 + 높은 기회 */
+.no-warm { background: var(--amber-dim); } /* 미보유 + 중간 기회 */
+
+/* ── SIDE PANEL ── */
+.side-panel {
+  width: 300px;
+  min-width: 300px;
+  background: var(--surface);
+  border-left: 1px solid var(--border2);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  transition: width 0.2s;
+}
+.side-panel.collapsed { width: 0; min-width: 0; }
+.panel-header {
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.panel-title { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--ink); }
+.panel-sub { font-size: 11px; color: var(--ink3); margin-top: 2px; }
+.panel-body { flex: 1; overflow-y: auto; padding: 14px 16px; }
+.panel-empty { color: var(--ink3); font-size: 12px; text-align: center; padding: 40px 0; line-height: 2; }
+
+.info-row { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 0; border-bottom: 1px solid var(--border); }
+.info-row:last-child { border-bottom: none; }
+.info-key { font-size: 11px; color: var(--ink3); }
+.info-val { font-family: var(--mono); font-size: 11px; color: var(--ink); }
+
+.section-title {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink3); margin: 14px 0 8px;
+}
+
+.upsell-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--red);
+  border-radius: 6px;
+  margin-bottom: 6px;
+}
+.upsell-rank { font-family: var(--mono); font-size: 10px; color: var(--ink3); min-width: 16px; }
+.upsell-prod { font-weight: 500; font-size: 12px; flex: 1; }
+.upsell-pen { font-family: var(--mono); font-size: 10px; color: var(--amber); }
+.upsell-desc { font-size: 10px; color: var(--ink3); margin-top: 2px; }
+
+.owned-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip {
+  font-family: var(--mono); font-size: 10px;
+  padding: 2px 7px; border-radius: 4px;
+  background: var(--green-dim); color: var(--green);
+}
+.chip.miss { background: var(--surface3); color: var(--ink3); }
+
+/* HEATMAP BAR */
+.pen-bar-wrap { margin-top: 8px; }
+.pen-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.pen-prod { font-size: 10px; color: var(--ink2); width: 70px; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pen-bar-bg { flex: 1; height: 8px; background: var(--surface3); border-radius: 3px; overflow: hidden; }
+.pen-bar-fill { height: 100%; border-radius: 3px; background: var(--green); transition: width 0.5s; }
+.pen-pct { font-family: var(--mono); font-size: 9px; color: var(--ink3); min-width: 30px; text-align: right; }
+
+/* SUMMARY FOOTER */
+.summary-bar {
+  padding: 10px 24px;
+  border-top: 1px solid var(--border2);
+  background: var(--surface);
+  display: flex; gap: 24px; align-items: center;
+  font-family: var(--mono); font-size: 11px; color: var(--ink2);
+  flex-wrap: wrap;
+}
+.sum-item { display: flex; gap: 6px; align-items: center; }
+.sum-val { color: var(--ink); font-weight: 500; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-title">KA 상품 침투 매트릭스 <span>· 상위 80개사</span></div>
+  <div class="filters">
+    <span class="filter-label">Tier</span>
+    <select id="filterTier">
+      <option value="all">전체</option>
+      <option value="Tier 1">Tier 1</option>
+      <option value="Tier 2">Tier 2</option>
+      <option value="Tier 3">Tier 3</option>
+    </select>
+    <span class="filter-label">담당</span>
+    <select id="filterDiv">
+      <option value="all">전체</option>
+      <option value="그룹담당">그룹담당</option>
+      <option value="동부담당">동부담당</option>
+      <option value="공공담당">공공담당</option>
+      <option value="금융담당">금융담당</option>
+      <option value="서부담당">서부담당</option>
+    </select>
+    <span class="filter-label">정렬</span>
+    <select id="sortBy">
+      <option value="rev">매출 높은 순</option>
+      <option value="prod_cnt_asc">상품 적은 순</option>
+      <option value="prod_cnt_desc">상품 많은 순</option>
+      <option value="upsell">업셀 기회 순</option>
+    </select>
+    <input class="col-search" id="custSearch" placeholder="고객명 검색…" style="width:120px;padding:5px 8px;border-radius:5px;font-size:11px;">
+  </div>
+  <div class="legend-row">
+    <div class="leg"><div class="leg-dot" style="background:var(--green-dim);border:1px solid var(--green);"></div>보유</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--red-dim);border:1px solid var(--red);"></div>미보유 (기회↑)</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--amber-dim);border:1px solid var(--amber);"></div>미보유 (기회↗)</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--surface3);border:1px solid var(--border2);"></div>미보유</div>
+  </div>
+</div>
+
+<!-- WORKSPACE -->
+<div class="workspace">
+
+  <!-- MATRIX -->
+  <div class="matrix-wrap" id="matrixWrap">
+    <div class="matrix-container">
+      <table class="m-table" id="mTable">
+        <thead>
+          <tr class="m-head-row" id="mHead"></tr>
+        </thead>
+        <tbody id="mBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SIDE PANEL -->
+  <div class="side-panel" id="sidePanel">
+    <div class="panel-header">
+      <div class="panel-title" id="panelTitle">고객 선택</div>
+      <div class="panel-sub" id="panelSub">매트릭스에서 행을 클릭하세요</div>
+    </div>
+    <div class="panel-body" id="panelBody">
+      <div class="panel-empty">← 고객 행을 클릭하면<br>상세 인사이트가<br>여기에 표시됩니다</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- SUMMARY -->
+<div class="summary-bar" id="summaryBar">
+  <div class="sum-item">표시 고객 <span class="sum-val" id="sumCount">-</span>사</div>
+  <div class="sum-item">평균 보유 상품 <span class="sum-val" id="sumAvgProd">-</span>개</div>
+  <div class="sum-item">업셀 기회 합계 <span class="sum-val" id="sumUpsell">-</span>건</div>
+  <div class="sum-item" style="margin-left:auto;color:var(--ink3);font-size:10px;">열 헤더 클릭 → 해당 상품 보유 고객 정렬</div>
+</div>
+
+<script>
+const PRODUCTS = ["AI컨택센터", "IPTV", "M2M", "그룹웨어", "데이터센터", "메시징서비스", "보안솔루션", "스마트워크", "시내전화", "인터넷전화", "전용회선", "초고속인터넷", "클라우드"];
+const ALL_CUSTOMERS = [{"id": "7297601154", "name": "핵심고객_0095", "tier": "Tier 1", "div": "서부담당", "emp": "최ㅇㅇ", "rev": 647542296, "prod_cnt": 11, "products": [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1], "upsell": [["초고속인터넷", 55.8], ["IPTV", 54.0]]}, {"id": "6857172255", "name": "핵심고객_0419", "tier": "Tier 2", "div": "동부담당", "emp": "이ㅇㅇ", "rev": 603053604, "prod_cnt": 11, "products": [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1], "upsell": [["AI컨택센터", 63.8], ["초고속인터넷", 51.5]]}, {"id": "1161144843", "name": "핵심고객_0004", "tier": "Tier 1", "div": "공공담당", "emp": "임ㅇㅇ", "rev": 558909676, "prod_cnt": 11, "products": [1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1], "upsell": [["스마트워크", 61.1], ["인터넷전화", 60.2]]}, {"id": "9473930723", "name": "핵심고객_0016", "tier": "Tier 1", "div": "공공담당", "emp": "임ㅇㅇ", "rev": 501751339, "prod_cnt": 10, "products": [1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0], "upsell": [["전용회선", 62.8], ["스마트워크", 61.1], ["클라우드", 55.8]]}, {"id": "1932199325", "name": "핵심고객_0060", "tier": "Tier 2", "div": "동부담당", "emp": "김ㅇㅇ", "rev": 498652319, "prod_cnt": 11, "products": [1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1], "upsell": [["시내전화", 63.1], ["M2M", 54.6]]}, {"id": "9298621590", "name": "핵심고객_0061", "tier": "Tier 2", "div": "동부담당", "emp": "안ㅇㅇ", "rev": 488995566, "prod_cnt": 10, "products": [1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1], "upsell": [["인터넷전화", 60.0], ["그룹웨어", 58.5], ["보안솔루션", 53.8]]}, {"id": "7899853620", "name": "핵심고객_0415", "tier": "Tier 3", "div": "서부담당", "emp": "김ㅇㅇ", "rev": 487607037, "prod_cnt": 12, "products": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0], "upsell": [["클라우드", 57.0]]}, {"id": "9730126550", "name": "핵심고객_0475", "tier": "Tier 2", "div": "공공담당", "emp": "임ㅇㅇ", "rev": 476073469, "prod_cnt": 11, "products": [1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1], "upsell": [["인터넷전화", 60.0], ["전용회선", 55.4]]}, {"id": "2971739184", "name": "핵심고객_0200", "tier": "Tier 3", "div": "동부담당", "emp": "정ㅇㅇ", "rev": 471326177, "prod_cnt": 9, "products": [1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1], "upsell": [["M2M", 61.2], ["그룹웨어", 59.5], ["메시징서비스", 57.0]]}, {"id": "8916817196", "name": "핵심고객_0268", "tier": "Tier 1", "div": "동부담당", "emp": "전ㅇㅇ", "rev": 462218941, "prod_cnt": 10, "products": [0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1], "upsell": [["M2M", 61.1], ["AI컨택센터", 57.5], ["데이터센터", 56.6]]}, {"id": "2226360834", "name": "핵심고객_0182", "tier": "Tier 1", "div": "공공담당", "emp": "조ㅇㅇ", "rev": 461431242, "prod_cnt": 12, "products": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1], "upsell": [["전용회선", 62.8]]}, {"id": "1605805382", "name": "핵심고객_0059", "tier": "Tier 3", "div": "서부담당", "emp": "임ㅇㅇ", "rev": 459464771, "prod_cnt": 12, "products": [1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1], "upsell": [["인터넷전화", 49.6]]}, {"id": "7757612328", "name": "핵심고객_0064", "tier": "Tier 3", "div": "그룹담당", "emp": "권ㅇㅇ", "rev": 452166808, "prod_cnt": 11, "products": [1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1], "upsell": [["그룹웨어", 59.5], ["보안솔루션", 55.4]]}, {"id": "6225944390", "name": "핵심고객_0249", "tier": "Tier 2", "div": "동부담당", "emp": "김ㅇㅇ", "rev": 441708780, "prod_cnt": 13, "products": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], "upsell": []}, {"id": "6004021026", "name": "핵심고객_0495", "tier": "Tier 3", "div": "공공담당", "emp": "이ㅇㅇ", "rev": 419376215, "prod_cnt": 12, "products": [1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1], "upsell": [["데이터센터", 54.5]]}, {"id": "4587700024", "name": "핵심고객_0041", "tier": "Tier 2", "div": "그룹담당", "emp": "서ㅇㅇ", "rev": 410924330, "prod_cnt": 11, "products": [1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1], "upsell": [["데이터센터", 62.3], ["메시징서비스", 53.1]]}, {"id": "4187828420", "name": "핵심고객_0239", "tier": "Tier 1", "div": "공공담당", "emp": "오ㅇㅇ", "rev": 393847557, "prod_cnt": 12, "products": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0], "upsell": [["클라우드", 55.8]]}, {"id": "8301760998", "name": "핵심고객_0222", "tier": "Tier 2", "div": "금융담당", "emp": "송ㅇㅇ", "rev": 383546005, "prod_cnt": 11, "products": [1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1], "upsell": [["인터넷전화", 60.0], ["전용회선", 55.4]]}, {"id": "3707638238", "name": "핵심고객_0396", "tier": "Tier 2", "div": "그룹담당", "emp": "임ㅇㅇ", "rev": 381549794, "prod_cnt": 11, "products": [1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1], "upsell": [["그룹웨어", 58.5], ["스마트워크", 57.7]]}, {"id": "5487229302", "name": "핵심고객_0082", "tier": "Tier 1", "div": "금융담당", "emp": "전ㅇㅇ", "rev": 377934908, "prod_cnt": 8, "products": [1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0], "upsell": [["전용회선", 62.8], ["M2M", 61.1], ["그룹웨어", 55.8]]}, {"id": "6423364379", "name": "핵심고객_0024", "tier": "Tier 3", "div": "그룹담당", "emp": "이ㅇㅇ", "rev": 370254541, "prod_cnt": 7, "products": [1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1], "upsell": [["M2M", 61.2], ["데이터센터", 54.5], ["IPTV", 50.4]]}, {"id": "7576566606", "name": "핵심고객_0384", "tier": "Tier 3", "div": "그룹담당", "emp": "이ㅇㅇ", "rev": 368889626, "prod_cnt": 13, "products": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], "upsell": []}, {"id": "8665137277", "name": "핵심고객_0278", "tier": "Tier 2", "div": "공공담당", "emp": "최ㅇㅇ", "rev": 362973971, "prod_cnt": 10, "products": [1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1], "upsell": [["스마트워크", 57.7], ["M2M", 54.6], ["보안솔루션", 53.8]]}, {"id": "8026000296", "name": "핵심고객_0361", "tier": "Tier 1", "div": "그룹담당", "emp": "홍ㅇㅇ", "rev": 362675674, "prod_cnt": 8, "products": [0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1], "upsell": [["인터넷전화", 60.2], ["AI컨택센터", 57.5], ["그룹웨어", 55.8]]}, {"id": "6102738253", "name": "핵심고객_0458", "tier": "Tier 3", "div": "금융담당", "emp": "정ㅇㅇ", "rev": 361608082, "prod_cnt": 11, "products": [1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1], "upsell": [["초고속인터넷", 58.7], ["스마트워크", 47.9]]}, {"id": "2376517235", "name": "핵심고객_0031", "tier": "Tier 3", "div": "동부담당", "emp": "조ㅇㅇ", "rev": 350537317, "prod_cnt": 10, "products": [1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1], "upsell": [["메시징서비스", 57.0], ["보안솔루션", 55.4], ["데이터센터", 54.5]]}, {"id": "1632479727", "name": "핵심고객_0201", "tier": "Tier 1", "div": "동부담당", "emp": "송ㅇㅇ", "rev": 348681999, "prod_cnt": 10, "products": [1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0], "upsell": [["클라우드", 55.8], ["IPTV", 54.0], ["메시징서비스", 53.1]]}, {"id": "6127202591", "name": "핵심고객_0033", "tier": "Tier 1", "div": "공공담당", "emp": "홍ㅇㅇ", "rev": 347462565, "prod_cnt": 11, "products": [1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1], "upsell": [["그룹웨어", 55.8], ["초고속인터넷", 55.8]]}, {"id": "5267526878", "name": "핵심고객_0058", "tier": "Tier 1", "div": "서부담당", "emp": "홍ㅇㅇ", "rev": 346994601, "prod_cnt": 7, "products": [1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0], "upsell": [["스마트워크", 61.1], ["데이터센터", 56.6], ["클라우드", 55.8]]}, {"id": "7865267810", "name": "핵심고객_0269", "tier": "Tier 3", "div": "금융담당", "emp": "신ㅇㅇ", "rev": 345643945, "prod_cnt": 8, "products": [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0], "upsell": [["클라우드", 57.0], ["보안솔루션", 55.4], ["인터넷전화", 49.6]]}, {"id": "9463387659", "name": "핵심고객_0069", "tier": "Tier 1", "div": "공공담당", "emp": "안ㅇㅇ", "rev": 344828689, "prod_cnt": 12, "products": [1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1], "upsell": [["인터넷전화", 60.2]]}, {"id": "3665012489", "name": "핵심고객_0078", "tier": "Tier 1", "div": "공공담당", "emp": "이ㅇㅇ", "rev": 341685585, "prod_cnt": 9, "products": [0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1], "upsell": [["AI컨택센터", 57.5], ["그룹웨어", 55.8], ["IPTV", 54.0]]}, {"id": "1548099454", "name": "핵심고객_0028", "tier": "Tier 1", "div": "서부담당", "emp": "최ㅇㅇ", "rev": 341620552, "prod_cnt": 9, "products": [1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1], "upsell": [["그룹웨어", 55.8], ["초고속인터넷", 55.8], ["IPTV", 54.0]]}, {"id": "3199469946", "name": "핵심고객_0080", "tier": "Tier 1", "div": "서부담당", "emp": "윤ㅇㅇ", "rev": 340895481, "prod_cnt": 7, "products": [1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1], "upsell": [["인터넷전화", 60.2], ["데이터센터", 56.6], ["그룹웨어", 55.8]]}, {"id": "8991684758", "name": "핵심고객_0050", "tier": "Tier 1", "div": "그룹담당", "emp": "신ㅇㅇ", "rev": 340167525, "prod_cnt": 9, "products": [1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0], "upsell": [["데이터센터", 56.6], ["초고속인터넷", 55.8], ["클라우드", 55.8]]}, {"id": "4974225502", "name": "핵심고객_0462", "tier": "Tier 2", "div": "그룹담당", "emp": "이ㅇㅇ", "rev": 339214159, "prod_cnt": 13, "products": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], "upsell": []}, {"id": "5350720283", "name": "핵심고객_0329", "tier": "Tier 3", "div": "동부담당", "emp": "전ㅇㅇ", "rev": 338635289, "prod_cnt": 11, "products": [1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1], "upsell": [["초고속인터넷", 58.7], ["데이터센터", 54.5]]}, {"id": "1213511280", "name": "핵심고객_0400", "tier": "Tier 1", "div": "서부담당", "emp": "최ㅇㅇ", "rev": 338390539, "prod_cnt": 10, "products": [1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0], "upsell": [["M2M", 61.1], ["데이터센터", 56.6], ["클라우드", 55.8]]}, {"id": "2700999168", "name": "핵심고객_0227", "tier": "Tier 1", "div": "동부담당", "emp": "김ㅇㅇ", "rev": 338009036, "prod_cnt": 9, "products": [0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1], "upsell": [["M2M", 61.1], ["스마트워크", 61.1], ["AI컨택센터", 57.5]]}, {"id": "8232949626", "name": "핵심고객_0043", "tier": "Tier 1", "div": "공공담당", "emp": "안ㅇㅇ", "rev": 336953028, "prod_cnt": 10, "products": [1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1], "upsell": [["M2M", 61.1], ["스마트워크", 61.1], ["보안솔루션", 52.2]]}, {"id": "6244620937", "name": "핵심고객_0130", "tier": "Tier 3", "div": "공공담당", "emp": "홍ㅇㅇ", "rev": 335920661, "prod_cnt": 6, "products": [1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0], "upsell": [["M2M", 61.2], ["그룹웨어", 59.5], ["초고속인터넷", 58.7]]}, {"id": "7636249510", "name": "핵심고객_0358", "tier": "Tier 2", "div": "서부담당", "emp": "김ㅇㅇ", "rev": 335413903, "prod_cnt": 8, "products": [0, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1], "upsell": [["AI컨택센터", 63.8], ["그룹웨어", 58.5], ["스마트워크", 57.7]]}, {"id": "7187077374", "name": "핵심고객_0234", "tier": "Tier 2", "div": "공공담당", "emp": "강ㅇㅇ", "rev": 329929296, "prod_cnt": 11, "products": [1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0], "upsell": [["클라우드", 66.9], ["데이터센터", 62.3]]}, {"id": "4407036044", "name": "핵심고객_0416", "tier": "Tier 3", "div": "동부담당", "emp": "조ㅇㅇ", "rev": 327836809, "prod_cnt": 8, "products": [0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1], "upsell": [["AI컨택센터", 61.2], ["전용회선", 61.2], ["그룹웨어", 59.5]]}, {"id": "7771964019", "name": "핵심고객_0382", "tier": "Tier 2", "div": "동부담당", "emp": "안ㅇㅇ", "rev": 320136446, "prod_cnt": 10, "products": [1, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1], "upsell": [["시내전화", 63.1], ["IPTV", 60.8], ["M2M", 54.6]]}, {"id": "7998832315", "name": "핵심고객_0497", "tier": "Tier 3", "div": "공공담당", "emp": "이ㅇㅇ", "rev": 319933552, "prod_cnt": 7, "products": [0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1], "upsell": [["AI컨택센터", 61.2], ["초고속인터넷", 58.7], ["메시징서비스", 57.0]]}, {"id": "2283092822", "name": "핵심고객_0285", "tier": "Tier 2", "div": "서부담당", "emp": "임ㅇㅇ", "rev": 315748438, "prod_cnt": 10, "products": [1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1], "upsell": [["시내전화", 63.1], ["스마트워크", 57.7], ["M2M", 54.6]]}, {"id": "3471805967", "name": "핵심고객_0088", "tier": "Tier 3", "div": "서부담당", "emp": "윤ㅇㅇ", "rev": 315078787, "prod_cnt": 11, "products": [1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1], "upsell": [["그룹웨어", 59.5], ["시내전화", 46.3]]}, {"id": "2494501397", "name": "핵심고객_0348", "tier": "Tier 2", "div": "금융담당", "emp": "신ㅇㅇ", "rev": 314581532, "prod_cnt": 10, "products": [1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1], "upsell": [["IPTV", 60.8], ["스마트워크", 57.7], ["메시징서비스", 53.1]]}, {"id": "2954247759", "name": "핵심고객_0409", "tier": "Tier 3", "div": "서부담당", "emp": "김ㅇㅇ", "rev": 312538852, "prod_cnt": 11, "products": [1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1], "upsell": [["그룹웨어", 59.5], ["메시징서비스", 57.0]]}, {"id": "9915180453", "name": "핵심고객_0072", "tier": "Tier 2", "div": "공공담당", "emp": "서ㅇㅇ", "rev": 312432928, "prod_cnt": 10, "products": [1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1], "upsell": [["IPTV", 60.8], ["M2M", 54.6], ["보안솔루션", 53.8]]}, {"id": "6129852810", "name": "핵심고객_0039", "tier": "Tier 2", "div": "그룹담당", "emp": "신ㅇㅇ", "rev": 312353623, "prod_cnt": 12, "products": [1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1], "upsell": [["보안솔루션", 53.8]]}, {"id": "7041448915", "name": "핵심고객_0008", "tier": "Tier 2", "div": "금융담당", "emp": "임ㅇㅇ", "rev": 309776830, "prod_cnt": 12, "products": [1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1], "upsell": [["보안솔루션", 53.8]]}, {"id": "9814829652", "name": "핵심고객_0216", "tier": "Tier 1", "div": "공공담당", "emp": "오ㅇㅇ", "rev": 309201294, "prod_cnt": 8, "products": [0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0], "upsell": [["전용회선", 62.8], ["인터넷전화", 60.2], ["AI컨택센터", 57.5]]}, {"id": "7335923323", "name": "핵심고객_0374", "tier": "Tier 1", "div": "서부담당", "emp": "최ㅇㅇ", "rev": 308936526, "prod_cnt": 9, "products": [1, 1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1], "upsell": [["스마트워크", 61.1], ["시내전화", 59.3], ["그룹웨어", 55.8]]}, {"id": "4297259128", "name": "핵심고객_0267", "tier": "Tier 3", "div": "서부담당", "emp": "권ㅇㅇ", "rev": 306768186, "prod_cnt": 11, "products": [0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1], "upsell": [["AI컨택센터", 61.2], ["그룹웨어", 59.5]]}, {"id": "4386181013", "name": "핵심고객_0342", "tier": "Tier 3", "div": "서부담당", "emp": "정ㅇㅇ", "rev": 304253173, "prod_cnt": 7, "products": [0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1], "upsell": [["AI컨택센터", 61.2], ["메시징서비스", 57.0], ["보안솔루션", 55.4]]}, {"id": "9526544850", "name": "핵심고객_0403", "tier": "Tier 1", "div": "그룹담당", "emp": "신ㅇㅇ", "rev": 303485075, "prod_cnt": 9, "products": [1, 1, 1, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1], "upsell": [["시내전화", 59.3], ["초고속인터넷", 55.8], ["메시징서비스", 53.1]]}, {"id": "6019381731", "name": "핵심고객_0012", "tier": "Tier 1", "div": "금융담당", "emp": "신ㅇㅇ", "rev": 301791661, "prod_cnt": 10, "products": [1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1], "upsell": [["M2M", 61.1], ["메시징서비스", 53.1], ["보안솔루션", 52.2]]}, {"id": "2507342450", "name": "핵심고객_0053", "tier": "Tier 1", "div": "동부담당", "emp": "한ㅇㅇ", "rev": 299095614, "prod_cnt": 10, "products": [1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1], "upsell": [["스마트워크", 61.1], ["시내전화", 59.3], ["초고속인터넷", 55.8]]}, {"id": "4191356068", "name": "핵심고객_0280", "tier": "Tier 2", "div": "공공담당", "emp": "정ㅇㅇ", "rev": 298674581, "prod_cnt": 9, "products": [0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1], "upsell": [["AI컨택센터", 63.8], ["데이터센터", 62.3], ["IPTV", 60.8]]}, {"id": "2963990340", "name": "핵심고객_0048", "tier": "Tier 1", "div": "서부담당", "emp": "이ㅇㅇ", "rev": 297936977, "prod_cnt": 10, "products": [1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1], "upsell": [["전용회선", 62.8], ["그룹웨어", 55.8], ["보안솔루션", 52.2]]}, {"id": "3143542647", "name": "핵심고객_0251", "tier": "Tier 2", "div": "공공담당", "emp": "장ㅇㅇ", "rev": 297565655, "prod_cnt": 11, "products": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1], "upsell": [["전용회선", 55.4], ["초고속인터넷", 51.5]]}, {"id": "8349351961", "name": "핵심고객_0433", "tier": "Tier 2", "div": "그룹담당", "emp": "강ㅇㅇ", "rev": 296752260, "prod_cnt": 9, "products": [1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1], "upsell": [["IPTV", 60.8], ["전용회선", 55.4], ["보안솔루션", 53.8]]}, {"id": "7589379597", "name": "핵심고객_0133", "tier": "Tier 3", "div": "금융담당", "emp": "정ㅇㅇ", "rev": 293051618, "prod_cnt": 10, "products": [1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 0, 1], "upsell": [["초고속인터넷", 58.7], ["보안솔루션", 55.4], ["데이터센터", 54.5]]}, {"id": "9174070211", "name": "핵심고객_0152", "tier": "Tier 1", "div": "금융담당", "emp": "윤ㅇㅇ", "rev": 287604703, "prod_cnt": 11, "products": [1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1], "upsell": [["시내전화", 59.3], ["데이터센터", 56.6]]}, {"id": "8721365370", "name": "핵심고객_0106", "tier": "Tier 1", "div": "그룹담당", "emp": "임ㅇㅇ", "rev": 286699425, "prod_cnt": 7, "products": [0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1], "upsell": [["M2M", 61.1], ["인터넷전화", 60.2], ["시내전화", 59.3]]}, {"id": "5053153529", "name": "핵심고객_0176", "tier": "Tier 2", "div": "그룹담당", "emp": "송ㅇㅇ", "rev": 284262719, "prod_cnt": 9, "products": [1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 1, 1, 1], "upsell": [["데이터센터", 62.3], ["인터넷전화", 60.0], ["그룹웨어", 58.5]]}, {"id": "6012836967", "name": "핵심고객_0175", "tier": "Tier 1", "div": "공공담당", "emp": "안ㅇㅇ", "rev": 280444597, "prod_cnt": 11, "products": [1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1], "upsell": [["시내전화", 59.3], ["메시징서비스", 53.1]]}, {"id": "1768709831", "name": "핵심고객_0326", "tier": "Tier 1", "div": "동부담당", "emp": "전ㅇㅇ", "rev": 279770831, "prod_cnt": 10, "products": [1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1], "upsell": [["데이터센터", 56.6], ["IPTV", 54.0], ["보안솔루션", 52.2]]}, {"id": "4011765552", "name": "핵심고객_0188", "tier": "Tier 1", "div": "서부담당", "emp": "윤ㅇㅇ", "rev": 278792895, "prod_cnt": 5, "products": [0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 1, 0], "upsell": [["전용회선", 62.8], ["M2M", 61.1], ["인터넷전화", 60.2]]}, {"id": "5426027121", "name": "핵심고객_0473", "tier": "Tier 1", "div": "공공담당", "emp": "홍ㅇㅇ", "rev": 275942219, "prod_cnt": 9, "products": [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1], "upsell": [["전용회선", 62.8], ["AI컨택센터", 57.5], ["초고속인터넷", 55.8]]}, {"id": "3805126243", "name": "핵심고객_0341", "tier": "Tier 1", "div": "동부담당", "emp": "서ㅇㅇ", "rev": 275454665, "prod_cnt": 6, "products": [0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1], "upsell": [["스마트워크", 61.1], ["인터넷전화", 60.2], ["시내전화", 59.3]]}, {"id": "4534546826", "name": "핵심고객_0303", "tier": "Tier 2", "div": "금융담당", "emp": "신ㅇㅇ", "rev": 274462564, "prod_cnt": 12, "products": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1], "upsell": [["초고속인터넷", 51.5]]}, {"id": "9168681474", "name": "핵심고객_0158", "tier": "Tier 3", "div": "금융담당", "emp": "윤ㅇㅇ", "rev": 273438428, "prod_cnt": 12, "products": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1], "upsell": [["초고속인터넷", 58.7]]}, {"id": "4738267556", "name": "핵심고객_0412", "tier": "Tier 2", "div": "금융담당", "emp": "윤ㅇㅇ", "rev": 271405875, "prod_cnt": 9, "products": [1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1], "upsell": [["시내전화", 63.1], ["데이터센터", 62.3], ["전용회선", 55.4]]}, {"id": "1760161879", "name": "핵심고객_0017", "tier": "Tier 2", "div": "그룹담당", "emp": "서ㅇㅇ", "rev": 270761285, "prod_cnt": 9, "products": [1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0], "upsell": [["클라우드", 66.9], ["데이터센터", 62.3], ["그룹웨어", 58.5]]}, {"id": "8045191229", "name": "핵심고객_0314", "tier": "Tier 2", "div": "금융담당", "emp": "홍ㅇㅇ", "rev": 269502612, "prod_cnt": 10, "products": [0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0], "upsell": [["클라우드", 66.9], ["AI컨택센터", 63.8], ["보안솔루션", 53.8]]}, {"id": "6741064390", "name": "핵심고객_0445", "tier": "Tier 2", "div": "그룹담당", "emp": "한ㅇㅇ", "rev": 269428933, "prod_cnt": 9, "products": [1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0], "upsell": [["클라우드", 66.9], ["인터넷전화", 60.0], ["보안솔루션", 53.8]]}, {"id": "8136495381", "name": "핵심고객_0365", "tier": "Tier 3", "div": "서부담당", "emp": "김ㅇㅇ", "rev": 268755398, "prod_cnt": 5, "products": [1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0], "upsell": [["전용회선", 61.2], ["그룹웨어", 59.5], ["초고속인터넷", 58.7]]}];
+const TIER_PEN = {"Tier 1": {"AI컨택센터": 57.5, "IPTV": 54.0, "M2M": 61.1, "그룹웨어": 55.8, "데이터센터": 56.6, "메시징서비스": 53.1, "보안솔루션": 52.2, "스마트워크": 61.1, "시내전화": 59.3, "인터넷전화": 60.2, "전용회선": 62.8, "초고속인터넷": 55.8, "클라우드": 55.8}, "Tier 2": {"AI컨택센터": 63.8, "IPTV": 60.8, "M2M": 54.6, "그룹웨어": 58.5, "데이터센터": 62.3, "메시징서비스": 53.1, "보안솔루션": 53.8, "스마트워크": 57.7, "시내전화": 63.1, "인터넷전화": 60.0, "전용회선": 55.4, "초고속인터넷": 51.5, "클라우드": 66.9}, "Tier 3": {"AI컨택센터": 61.2, "IPTV": 50.4, "M2M": 61.2, "그룹웨어": 59.5, "데이터센터": 54.5, "메시징서비스": 57.0, "보안솔루션": 55.4, "스마트워크": 47.9, "시내전화": 46.3, "인터넷전화": 49.6, "전용회선": 61.2, "초고속인터넷": 58.7, "클라우드": 57.0}};
+const OVERALL_PEN = {"AI컨택센터": 61.0, "IPTV": 55.2, "M2M": 58.8, "그룹웨어": 58.0, "데이터센터": 58.0, "메시징서비스": 54.4, "보안솔루션": 53.8, "스마트워크": 55.5, "시내전화": 56.3, "인터넷전화": 56.6, "전용회선": 59.6, "초고속인터넷": 55.2, "클라우드": 60.2};
+
+let currentSort = 'rev';
+let sortProdIdx = null;
+let selectedId = null;
+let filteredCustomers = [...ALL_CUSTOMERS];
+
+const TIER_CLASS = { 'Tier 1':'t1', 'Tier 2':'t2', 'Tier 3':'t3' };
+
+function fmtRev(v) {
+  if (v >= 1e8) return (v/1e8).toFixed(1)+'억';
+  return (v/1e4).toFixed(0)+'만';
+}
+
+function getUpsellScore(c) {
+  return c.upsell.reduce((s,u) => s + u[1], 0);
+}
+
+function applyFilters() {
+  const tier = document.getElementById('filterTier').value;
+  const div  = document.getElementById('filterDiv').value;
+  const q    = document.getElementById('custSearch').value.toLowerCase();
+  filteredCustomers = ALL_CUSTOMERS.filter(c =>
+    (tier === 'all' || c.tier === tier) &&
+    (div  === 'all' || c.div  === div ) &&
+    (!q || c.name.toLowerCase().includes(q) || c.emp.includes(q))
+  );
+  applySort();
+}
+
+function applySort() {
+  const s = currentSort;
+  filteredCustomers.sort((a,b) => {
+    if (s === 'rev') return b.rev - a.rev;
+    if (s === 'prod_cnt_asc') return a.prod_cnt - b.prod_cnt;
+    if (s === 'prod_cnt_desc') return b.prod_cnt - a.prod_cnt;
+    if (s === 'upsell') return getUpsellScore(b) - getUpsellScore(a);
+    if (s === 'prod') {
+      // sort by whether has product at sortProdIdx (has=0 first = missing first)
+      return a.products[sortProdIdx] - b.products[sortProdIdx];
+    }
+    return 0;
+  });
+  renderMatrix();
+}
+
+function cellClass(has, prodName, tierPen) {
+  if (has) return 'has';
+  const pen = tierPen ? (tierPen[prodName] || 0) : (OVERALL_PEN[prodName] || 0);
+  if (pen >= 60) return 'no-hot';
+  if (pen >= 55) return 'no-warm';
+  return 'no';
+}
+
+function cellEmoji(has, cls) {
+  if (has) return '●';
+  if (cls === 'no-hot') return '○';
+  if (cls === 'no-warm') return '○';
+  return '·';
+}
+
+function cellColor(has, cls) {
+  if (has) return '#34c77b';
+  if (cls === 'no-hot') return '#ff5c5c';
+  if (cls === 'no-warm') return '#f5a623';
+  return '#2a2e38';
+}
+
+function renderHeader() {
+  const tr = document.getElementById('mHead');
+  // corner cell
+  const corner = document.createElement('th');
+  corner.className = 'm-corner';
+  corner.innerHTML = `<div class="m-corner-inner">
+    <span style="font-family:var(--mono);font-size:10px;color:var(--ink3);">고객사 · Tier · 담당</span>
+  </div>`;
+  tr.appendChild(corner);
+
+  PRODUCTS.forEach((p, i) => {
+    const th = document.createElement('th');
+    th.className = 'm-prod-th';
+    const isSorted = (sortProdIdx === i && currentSort === 'prod');
+    th.innerHTML = `<div class="th-inner">
+      <span class="th-label ${isSorted?'th-sorted':''}">${p}</span>
+      <span class="th-pen">${OVERALL_PEN[p]}%</span>
+    </div>`;
+    th.title = `${p} 전체 KA 침투율: ${OVERALL_PEN[p]}%
+클릭: 이 상품 미보유 고객 먼저 정렬`;
+    th.addEventListener('click', () => {
+      sortProdIdx = i;
+      currentSort = 'prod';
+      document.getElementById('sortBy').value = 'upsell';
+      applySort();
+      renderHeader();
+    });
+    tr.appendChild(th);
+  });
+}
+
+function renderMatrix() {
+  const tbody = document.getElementById('mBody');
+  tbody.innerHTML = '';
+
+  filteredCustomers.forEach(c => {
+    const tp = TIER_PEN[c.tier] || null;
+    const tr = document.createElement('tr');
+    tr.className = 'm-row' + (c.id === selectedId ? ' selected' : '');
+    tr.dataset.id = c.id;
+
+    // customer cell
+    const tdCust = document.createElement('td');
+    tdCust.className = 'm-cust-cell';
+    tdCust.innerHTML = `<div class="m-cust-inner">
+      <span class="tier-badge ${TIER_CLASS[c.tier]||''}">${c.tier}</span>
+      <div>
+        <div class="cust-name">${c.name}</div>
+        <div class="cust-meta">${c.div} · ${c.emp}</div>
+      </div>
+      <span class="cust-rev" style="margin-left:auto;">${fmtRev(c.rev)}</span>
+      <span class="prod-count">${c.prod_cnt}/13</span>
+    </div>`;
+    tr.appendChild(tdCust);
+
+    // product cells
+    PRODUCTS.forEach((p, i) => {
+      const has = c.products[i];
+      const cls = cellClass(has, p, tp);
+      const td = document.createElement('td');
+      td.className = 'm-cell';
+      td.innerHTML = `<div class="cell-dot ${cls}" style="color:${cellColor(has,cls)};" title="${p}: ${has?'보유':'미보유'}">${cellEmoji(has,cls)}</div>`;
+      tr.appendChild(td);
+    });
+
+    tr.addEventListener('click', () => selectCustomer(c));
+    tbody.appendChild(tr);
+  });
+
+  updateSummary();
+}
+
+function selectCustomer(c) {
+  selectedId = c.id;
+  // update selected row style
+  document.querySelectorAll('.m-row').forEach(r => r.classList.toggle('selected', r.dataset.id === c.id));
+
+  const tp = TIER_PEN[c.tier] || TIER_PEN['Tier 1'];
+  const ownedProds = PRODUCTS.filter((p,i) => c.products[i] === 1);
+  const missingProds = PRODUCTS.filter((p,i) => c.products[i] === 0);
+
+  document.getElementById('panelTitle').textContent = c.name;
+  document.getElementById('panelSub').textContent = `${c.tier} · ${c.div} · ${c.emp}`;
+
+  let html = '';
+  // 기본 정보
+  html += `<div class="info-row"><span class="info-key">총매출</span><span class="info-val">${fmtRev(c.rev)}</span></div>`;
+  html += `<div class="info-row"><span class="info-key">보유 상품</span><span class="info-val">${c.prod_cnt}개 / 13개</span></div>`;
+  html += `<div class="info-row"><span class="info-key">미보유 상품</span><span class="info-val">${13 - c.prod_cnt}개</span></div>`;
+  html += `<div class="info-row"><span class="info-key">Tier 평균 침투</span><span class="info-val">${Object.values(tp).reduce((a,b)=>a+b,0)/13|0}%</span></div>`;
+
+  // 업셀 기회
+  html += `<div class="section-title">🎯 업셀 기회 (동 Tier 기준)</div>`;
+  if (c.upsell.length === 0) {
+    html += `<div style="font-size:11px;color:var(--ink3);padding:8px 0;">미보유 상품 없음 — 풀 포트폴리오!</div>`;
+  } else {
+    c.upsell.forEach((u, idx) => {
+      const [prod, pen] = u;
+      html += `<div class="upsell-item">
+        <span class="upsell-rank">${idx+1}</span>
+        <div style="flex:1;">
+          <div class="upsell-prod">${prod}</div>
+          <div class="upsell-desc">${c.tier} 고객 중 ${pen}%가 보유 → 미확보</div>
+        </div>
+        <span class="upsell-pen">${pen}%</span>
+      </div>`;
+    });
+  }
+
+  // 보유 상품
+  html += `<div class="section-title">✅ 보유 상품 (${ownedProds.length}개)</div>`;
+  html += `<div class="owned-chips">`;
+  ownedProds.forEach(p => { html += `<span class="chip">${p}</span>`; });
+  html += `</div>`;
+
+  // 미보유 상품
+  if (missingProds.length > 0) {
+    html += `<div class="section-title">✗ 미보유 상품 (${missingProds.length}개)</div>`;
+    html += `<div class="owned-chips">`;
+    missingProds.forEach(p => { html += `<span class="chip miss">${p}</span>`; });
+    html += `</div>`;
+  }
+
+  // Tier 내 침투율 히트맵
+  html += `<div class="section-title">${c.tier} 상품별 침투율</div>`;
+  html += `<div class="pen-bar-wrap">`;
+  const sorted_tp = Object.entries(tp).sort((a,b) => b[1]-a[1]);
+  sorted_tp.forEach(([prod, pen]) => {
+    const hasIt = ownedProds.includes(prod);
+    html += `<div class="pen-row">
+      <span class="pen-prod" style="color:${hasIt?'var(--green)':'var(--ink3)'}">${prod}</span>
+      <div class="pen-bar-bg"><div class="pen-bar-fill" style="width:${pen}%;background:${hasIt?'var(--green)':'var(--red)'};opacity:${hasIt?1:0.5};"></div></div>
+      <span class="pen-pct">${pen}%</span>
+    </div>`;
+  });
+  html += `</div>`;
+
+  document.getElementById('panelBody').innerHTML = html;
+}
+
+function updateSummary() {
+  const n = filteredCustomers.length;
+  const avgProd = n ? (filteredCustomers.reduce((s,c)=>s+c.prod_cnt,0)/n).toFixed(1) : '-';
+  const upsellTotal = filteredCustomers.reduce((s,c)=>s+c.upsell.length,0);
+  document.getElementById('sumCount').textContent = n;
+  document.getElementById('sumAvgProd').textContent = avgProd;
+  document.getElementById('sumUpsell').textContent = upsellTotal;
+}
+
+// Event listeners
+document.getElementById('filterTier').addEventListener('change', applyFilters);
+document.getElementById('filterDiv').addEventListener('change', applyFilters);
+document.getElementById('custSearch').addEventListener('input', applyFilters);
+document.getElementById('sortBy').addEventListener('change', e => {
+  currentSort = e.target.value;
+  sortProdIdx = null;
+  applySort();
+  renderHeader();
+});
+
+// Init
+renderHeader();
+applyFilters();
+</script>
+</body>
+</html>
